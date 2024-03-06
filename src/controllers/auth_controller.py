@@ -3,8 +3,7 @@ from flask import request, Response, json, Blueprint
 from src.models.user_model import User
 from src import db
 from src.services.jwt_service import generate_token
-from src.lib.hashing import hash_password, check_password_hash
-from datetime import datetime;
+from src.library.hashing import hash_password, check_password_hash
 
 # user controller blueprint to be registered with api blueprint
 users = Blueprint("users", __name__)
