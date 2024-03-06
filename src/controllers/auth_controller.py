@@ -1,7 +1,9 @@
 import jwt,os
 from flask import request, Response, json, Blueprint
 from src.models.user_model import User
-from src import bcrypt, db
+from src import db
+from src.services.jwt_service import generate_token
+from src.lib.hashing import hash_password, check_password_hash
 from datetime import datetime;
 
 # user controller blueprint to be registered with api blueprint
@@ -20,16 +22,10 @@ def handle_login():
             # if user records exists we will check user password
             if user:
                 # check user password
-                if bcrypt.check_password_hash(user.password, data["password"]):
+                if check_password_hash(user.password, data["password"]):
                     # user password matched, we will generate token
-                    payload = {
-                        'iat': datetime.utcnow(),
-                        'user_id': str(user.id).replace('-',""),
-                        'firstname': user.firstname,
-                        'lastname': user.lastname,
-                        'email': user.email,
-                        }
-                    token = jwt.encode(payload,os.getenv('SECRET_KEY'),algorithm='HS256')
+                    
+                    token = generate_token(user)
                     return Response(
                             response=json.dumps({'status': "success",
                                                 "message": "User Sign In Successful",
@@ -82,25 +78,18 @@ def handle_signup():
             # usecase if the user doesn't exists
             if not user:
                 # creating the user instance of User Model to be stored in DB
+                hashed_password=hash_password(data['password'])
                 user_obj = User(
                     firstname = data["firstname"],
                     lastname = data["lastname"],
                     email = data["email"],
                     # hashing the password
-                    password = bcrypt.generate_password_hash(data['password']).decode('utf-8')
+                    password = hashed_password
                 )
                 db.session.add(user_obj)
                 db.session.commit()
 
-                # lets generate jwt token
-                payload = {
-                    'iat': datetime.utcnow(),
-                    'user_id': str(user_obj.id).replace('-',""),
-                    'firstname': user_obj.firstname,
-                    'lastname': user_obj.lastname,
-                    'email': user_obj.email,
-                }
-                token = jwt.encode(payload,os.getenv('SECRET_KEY'),algorithm='HS256')
+                token = generate_token(user_obj)
                 return Response(
                 response=json.dumps({'status': "success",
                                     "message": "User Sign up Successful",
